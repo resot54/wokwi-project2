@@ -1,0 +1,213 @@
+package com.example.excelapp;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DatabaseManager {
+    private Connection connection;
+
+    public DatabaseManager() {
+        connectToDatabase();
+        createTableIfNotExists();
+    }
+
+    private void connectToDatabase() {
+        try {
+            connection = DriverManager.getConnection("jdbc:sqlite:performance_data.db");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createTableIfNotExists() {
+        String sql = "CREATE TABLE IF NOT EXISTS performance_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                number_n INTEGER NOT NULL,
+                time_seconds REAL NOT NULL,
+                result_number INTEGER NOT NULL
+        );";
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void insertData(DataModel data) {
+        String sql = "INSERT INTO performance_data(number_n, time_seconds, result_number) VALUES(?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, data.getNumberN());
+            pstmt.setDouble(2, data.getTimeSeconds());
+            pstmt.setLong(3, data.getResultNumber());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<DataModel> getAllData() {
+        List<DataModel> dataList = new ArrayList<>();
+        String sql = "SELECT * FROM performance_data";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                DataModel data = new DataModel();
+                data.setId(rs.getInt("id"));
+                data.setNumberN(rs.getInt("number_n"));
+                data.setTimeSeconds(rs.getDouble("time_seconds"));
+                data.setResultNumber(rs.getLong("result_number"));
+                dataList.add(data);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dataList;
+    }
+
+    public void deleteData(int id) {
+        String sql = "DELETE FROM performance_data WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+package com.example.excelapp;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.List;
+
+public class ExcelLikeApp extends JFrame {
+    private JTextField numberNField;
+    private JTextField timeField;
+    private JTextField resultField;
+    private JTable dataTable;
+    private DefaultTableModel tableModel;
+    private DatabaseManager dbManager;
+
+    public ExcelLikeApp() {
+        setTitle("Упрощённый Excel — Фиксация производительности");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(800, 600);
+        setLocationRelativeTo(null);
+
+        dbManager = new DatabaseManager();
+        initComponents();
+        setupKeyBindings();
+        loadDataFromDatabase();
+    }
+
+    private void loadDataFromDatabase() {
+    }
+
+    private void setupKeyBindings() {
+    }
+
+    private void initComponents() {
+        // Поля ввода
+        numberNField = createTextField();
+        timeField = createTextField();
+        resultField = createTextField();
+
+        // Валидация времени
+        timeField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                validateTimeInput(e);
+            }
+        });
+
+        // Кнопки
+        JButton addButton = createButton("Добавить", this::addRow);
+        JButton deleteButton = createButton("Удалить", this::deleteRow);
+        JButton clearButton = createButton("Очистить", this::clearFields);
+
+        // Таблица
+        String[] columnNames = {"ID", "Число N", "Время (сек)", "Получившееся число"};
+        tableModel = new DefaultTableModel(columnNames, 0);
+        dataTable = new JTable(tableModel);
+        JScrollPane scrollPane = new JScrollPane(dataTable);
+
+        // Layout
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        inputPanel.setBorder(BorderFactory.createTitledBorder("Ввод данных"));
+        inputPanel.add(new JLabel("Число N:"));
+        inputPanel.add(numberNField);
+        inputPanel.add(new JLabel("Время (сек):"));
+        inputPanel.add(timeField);
+        inputPanel.add(new JLabel("Получившееся число:"));
+        inputPanel.add(resultField);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(addButton);
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(clearButton);
+
+        setLayout(new BorderLayout(10, 10));
+        add(inputPanel, BorderLayout.NORTH);
+    add(buttonPanel, BorderLayout.CENTER);
+    add(scrollPane, BorderLayout.SOUTH);
+}
+
+private JButton createButton(String добавить, Object o) {
+    return null;
+}
+
+    private JTextField createTextField() {
+        JTextField field = new JTextField();
+        field.setPreferredSize(new Dimension(150, 25));
+        return field;
+    }
+
+
+
+
+
+
+
+
+
+package com.example.excelapp;
+
+public class DataModel {
+    private int id;
+    private int numberN;
+    private double timeSeconds;
+    private long resultNumber;
+
+    public DataModel() {}
+
+    public DataModel(int numberN, double timeSeconds, long resultNumber) {
+        this.numberN = numberN;
+        this.timeSeconds = timeSeconds;
+        this.resultNumber = resultNumber;
+    }
+
+    // Геттеры и сеттеры
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public int getNumberN() { return numberN; }
+    public void setNumberN(int numberN) { this.numberN = numberN; }
+
+    public double getTimeSeconds() { return timeSeconds; }
+    public void setTimeSeconds(double timeSeconds) { this.timeSeconds = timeSeconds; }
+
+    public long getResultNumber() { return resultNumber; }
+    public void setResultNumber(long resultNumber) { this.resultNumber = resultNumber; }
+}
